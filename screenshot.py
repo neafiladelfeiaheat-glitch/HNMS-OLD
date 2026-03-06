@@ -10,8 +10,9 @@ chrome_options = Options()
 chrome_options.add_argument('--headless')
 chrome_options.add_argument('--no-sandbox')
 chrome_options.add_argument('--disable-dev-shm-usage')
-# Ορίζουμε ένα πολύ μεγάλο ύψος εξαρχής (2500px) για να χωράει όλο τον πίνακα
-chrome_options.add_argument('--window-size=1920,2500')
+
+# Ορίζουμε ένα πολύ μεγάλο ύψος (3000px) για να χωράει σίγουρα όλο τον πίνακα
+chrome_options.add_argument('--window-size=1920,3000')
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 chrome_options.add_argument(f'user-agent={user_agent}')
@@ -21,20 +22,17 @@ url = "http://oldportal.emy.gr/emy/el/observation/yesterday_weather?perifereia=A
 
 try:
     driver.get(url)
-    time.sleep(15) # Δίνουμε χρόνο στο firewall να μας αφήσει
+    time.sleep(15) # Χρόνος για να φορτώσουν όλα
 
-    # 1. Screenshot
+    # Screenshot
     os.makedirs('screenshots', exist_ok=True)
     today = datetime.now().strftime("%Y-%m-%d")
     filename = f"screenshots/emy_weather_{today}.png"
     
-    # Αν υπάρχει ήδη το αρχείο, το διαγράφουμε για να μπει το καινούργιο
-    if os.path.exists(filename):
-        os.remove(filename)
-        
+    # Τραβάμε τη φωτογραφία
     driver.save_screenshot(filename)
 
-    # 2. Excel Δεδομένα
+    # Excel Δεδομένα (για να ενημερώνεται και το αρχείο σου)
     rows = driver.find_elements(By.CSS_SELECTOR, "table tr")
     new_data = []
     for row in rows:
@@ -51,8 +49,8 @@ try:
         df_final.to_excel(excel_file, index=False)
     else:
         df_new.to_excel(excel_file, index=False)
-
-    print("Επιτυχία: Screenshot και Excel ενημερώθηκαν.")
+    
+    print("Όλα ενημερώθηκαν σωστά!")
 
 except Exception as e:
     print(f"Σφάλμα: {e}")
