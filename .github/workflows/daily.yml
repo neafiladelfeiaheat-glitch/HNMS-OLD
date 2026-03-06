@@ -1,36 +1,28 @@
-name: Daily EMY Screenshot
+name: Daily EMY Automation
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Τρέχει κάθε μέρα στις 08:00 ώρα Ελλάδος (06:00 UTC)
-  workflow_dispatch: # Σου επιτρέπει να το τρέχεις χειροκίνητα για δοκιμή
+    - cron: '0 6 * * *' # Τρέχει κάθε μέρα στις 08:00 ώρα Ελλάδος
+  workflow_dispatch: # Σου επιτρέπει να το τρέχεις χειροκίνητα
 
 jobs:
-  take-screenshot:
+  run-logic:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-
-    - name: Install dependencies
-      run: |
-        pip install selenium
-
-    - name: Run screenshot script
+    - name: Install Tools
+      run: pip install -r requirements.txt
+    - name: Execute Script
       run: python screenshot.py
-
-    - name: Commit and push screenshot
+    - name: Save Changes
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git add screenshots/
-        git commit -m "Auto-save daily screenshot" || echo "No changes to commit"
+        git add .
+        git commit -m "Auto-update: Screenshot & Excel" || echo "No changes"
         git push
