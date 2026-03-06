@@ -1,54 +1,60 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 import time
+import pandas as pd
 from datetime import datetime
 import os
 
-# 1. Βασικές Ρυθμίσεις Browser (κρατάμε τη μεταμφίεση)
 chrome_options = Options()
 chrome_options.add_argument('--headless')
 chrome_options.add_argument('--no-sandbox')
 chrome_options.add_argument('--disable-dev-shm-usage')
+# Ορίζουμε ένα πολύ μεγάλο ύψος εξαρχής (2500px) για να χωράει όλο τον πίνακα
+chrome_options.add_argument('--window-size=1920,2500')
 
-# Η μεταμφίεση που δούλεψε!
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 chrome_options.add_argument(f'user-agent={user_agent}')
 
-# 2. Ξεκινάμε τον driver
 driver = webdriver.Chrome(options=chrome_options)
 url = "http://oldportal.emy.gr/emy/el/observation/yesterday_weather?perifereia=Attiki"
 
 try:
-    print("Γίνεται φόρτωση της σελίδας...")
     driver.get(url)
+    time.sleep(15) # Δίνουμε χρόνο στο firewall να μας αφήσει
 
-    # 3. Περιμένουμε αρκετά (10 δευτ.) για να φορτώσει ολόκληρος ο πίνακας
-    time.sleep(10) 
-
-    print("Υπολογισμός μεγέθους σελίδας...")
-    
-    # 4. *** Η ΝΕΑ ΔΙΟΡΘΩΣΗ: "Έξυπνο" Full Page Screenshot ***
-    # Ρωτάμε τη σελίδα μέσω JavaScript: "Πόσο ψηλή είσαι;"
-    total_height = driver.execute_script("return document.body.scrollHeight")
-    
-    # Αλλάζουμε το μέγεθος του παραθύρου για να χωρέσει όλο το περιεχόμενο
-    # (κρατάμε το πλάτος σταθερό στα 1920)
-    driver.set_window_size(1920, total_height)
-    
-    # Δίνουμε 1 δευτερόλεπτο στον Chrome να προσαρμοστεί
-    time.sleep(1)
-
-    # 5. Αποθήκευση
+    # 1. Screenshot
     os.makedirs('screenshots', exist_ok=True)
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    filename = f"screenshots/emy_weather_{date_str}.png"
-
-    # 6. Λήψη του FULL screenshot
+    today = datetime.now().strftime("%Y-%m-%d")
+    filename = f"screenshots/emy_weather_{today}.png"
+    
+    # Αν υπάρχει ήδη το αρχείο, το διαγράφουμε για να μπει το καινούργιο
+    if os.path.exists(filename):
+        os.remove(filename)
+        
     driver.save_screenshot(filename)
-    print(f"Επιτυχία! Το full screenshot αποθηκεύτηκε ως: {filename}")
+
+    # 2. Excel Δεδομένα
+    rows = driver.find_elements(By.CSS_SELECTOR, "table tr")
+    new_data = []
+    for row in rows:
+        cols = row.find_elements(By.TAG_NAME, "td")
+        if cols:
+            new_data.append([today] + [c.text.strip() for c in cols])
+
+    excel_file = 'weather_history.xlsx'
+    df_new = pd.DataFrame(new_data, columns=['Ημερομηνία', 'Σταθμός', 'Μέγιστη Θερμ.', 'Ελάχιστη Θερμ.', 'Βροχόπτωση'])
+
+    if os.path.exists(excel_file):
+        df_old = pd.read_excel(excel_file)
+        df_final = pd.concat([df_old, df_new], ignore_index=True).drop_duplicates()
+        df_final.to_excel(excel_file, index=False)
+    else:
+        df_new.to_excel(excel_file, index=False)
+
+    print("Επιτυχία: Screenshot και Excel ενημερώθηκαν.")
 
 except Exception as e:
     print(f"Σφάλμα: {e}")
-
 finally:
     driver.quit()
